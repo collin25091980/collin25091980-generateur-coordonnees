@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Coordonnées</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f4f4f9; padding: 20px; display: flex; justify-content: center; }
+        .container { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h2 { text-align: center; color: #333; }
+        select, button { width: 100%; padding: 12px; margin: 10px 0 20px 0; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; }
+        label { font-weight: bold; color: #555; }
+        button { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button:hover { background: #004494; }
+        .result-box { margin-top: 20px; display: none; }
+        .copy-btn { background: #28a745; margin-top: 15px; }
+        .copy-btn:hover { background: #218838; }
+        textarea { width: 100%; height: 230px; margin-top: 5px; font-family: monospace; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+    </style>
+    <script type="module">
+        import { fakerFR as faker } from 'https://esm.sh/@faker-js/faker';
+
+        window.genererDonnees = function() {
+            const type = document.getElementById('typeCompte').value;
+            const resArea = document.getElementById('resultText');
+            let texte = "";
+
+            if (type === 'particulier') {
+                const prenom = faker.person.firstName();
+                const nom = faker.person.lastName();
+                const dateNaissance = faker.date.birthdate({ min: 18, max: 70, mode: 'age' }).toLocaleDateString('fr-FR');
+                const villeNaissance = faker.location.city();
+                const adresse = `${faker.location.buildingNumber()} ${faker.location.street()}, ${faker.location.zipCode()} ${faker.location.city()}`;
+                const cb = faker.finance.creditCardNumber();
+                const profession = faker.person.jobTitle();
+
+                texte = `Type : Particulier\n\nPrénom : ${prenom}\nNom : ${nom}\nDate de naissance : ${dateNaissance}\nVille de naissance : ${villeNaissance}\nAdresse postale : ${adresse}\nNuméro de CB : ${cb}\nProfession : ${profession}`;
+            } else {
+                const raisonSociale = faker.company.name();
+                const siret = faker.string.numeric(9) + "0001" + faker.string.numeric(1);
+                const adresse = `${faker.location.buildingNumber()} ${faker.location.street()}, ${faker.location.zipCode()} ${faker.location.city()}`;
+                const telephone = faker.phone.number();
+                const email = faker.internet.email({ provider: 'exemple-pro.fr' });
+                const cb = faker.finance.creditCardNumber();
+
+                texte = `Type : Professionnel\n\nRaison sociale : ${raisonSociale}\nSIRET : ${siret}\nNuméro de CB : ${cb}\n\nCoordonnées :\n- Adresse : ${adresse}\n- Téléphone : ${telephone}\n- Email : ${email}`;
+            }
+
+            resArea.value = texte;
+            document.getElementById('resultat').style.display = "block";
+        }
+
+        window.copierPressePapier = function() {
+            const texte = document.getElementById('resultText').value;
+            navigator.clipboard.writeText(texte).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.innerText = "Copié !";
+                setTimeout(() => btn.innerText = "Copier les données", 2000);
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h2>Générateur de Coordonnées</h2>
+        
+        <label for="typeCompte">Choisissez le type de profil :</label>
+        <select id="typeCompte">
+            <option value="particulier">👤 Particulier</option>
+            <option value="professionnel">🏢 Professionnel</option>
+        </select>
+        
+        <button onclick="genererDonnees()">Générer les données</button>
+        
+        <div id="resultat" class="result-box">
+            <label for="resultText">Résultat :</label>
+            <textarea id="resultText" readonly></textarea>
+            <button id="copyBtn" class="copy-btn" onclick="copierPressePapier()">Copier les données</button>
+        </div>
+    </div>
+</body>
+</html>
