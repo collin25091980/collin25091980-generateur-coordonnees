@@ -10,8 +10,9 @@
         h2 { text-align: center; color: #333; }
         select, button { width: 100%; padding: 12px; margin: 10px 0 20px 0; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; }
         label { font-weight: bold; color: #555; }
-        button { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.2s; }
         button:hover { background: #004494; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
         .result-box { margin-top: 20px; display: none; }
         .copy-btn { background: #28a745; margin-top: 15px; }
         .copy-btn:hover { background: #218838; }
@@ -20,64 +21,82 @@
     <script type="module">
         import { fakerFR as faker } from 'https://esm.sh/@faker-js/faker';
 
-        window.genererDonnees = function() {
+        window.genererDonnees = async function() {
             const type = document.getElementById('typeCompte').value;
             const resArea = document.getElementById('resultText');
+            const btnGen = document.getElementById('btnGen');
+            
+            // État de chargement
+            btnGen.innerText = "Génération en cours (recherche d'adresse)...";
+            btnGen.disabled = true;
             let texte = "";
 
-            // --- Génération de la Carte Bleue ---
-            let cbBrut = "";
-            while (cbBrut.length !== 16) {
-                cbBrut = faker.finance.creditCardNumber().replace(/\D/g, ''); 
-            }
-            const cbFormattee = cbBrut.match(/.{1,4}/g).join(' ');
-            const cvv = faker.finance.creditCardCVV();
-            const expDate = faker.date.future({ years: 4 });
-            const mois = String(expDate.getMonth() + 1).padStart(2, '0');
-            const annee = String(expDate.getFullYear()).slice(-2);
-            const infosCB = `${cbFormattee} (Exp: ${mois}/${annee} - CVV: ${cvv})`;
-            // ------------------------------------
-
-            // --- Génération du Téléphone FR (10 chiffres, prefix valide) ---
-            const prefixes = ['01', '02', '03', '04', '05', '06', '07', '09'];
-            const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-            const resteTel = faker.string.numeric(8);
-            const telephone = prefix + resteTel;
-            // ------------------------------------
-
-            if (type === 'particulier') {
-                const prenom = faker.person.firstName();
-                const nom = faker.person.lastName();
-                const dateNaissance = faker.date.birthdate({ min: 18, max: 70, mode: 'age' }).toLocaleDateString('fr-FR');
-                const villeNaissance = faker.location.city();
-                const adresse = `${faker.location.buildingNumber()} ${faker.location.street()}, ${faker.location.zipCode()} ${faker.location.city()}`;
-                const profession = faker.person.jobTitle();
+            try {
+                // --- Récupération d'une adresse 100% réelle (Base Adresse Nationale) ---
+                const ruesCommunes = ['rue de la republique', 'rue victor hugo', 'rue pasteur', 'rue jean jaures', 'rue de paris', 'avenue charles de gaulle', 'rue de la gare', 'grande rue', 'rue du moulin'];
+                const recherche = ruesCommunes[Math.floor(Math.random() * ruesCommunes.length)];
+                // L'API cherche un numéro de rue précis (type=housenumber) pour garantir une adresse valide
+                const repAPI = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(recherche)}&limit=50&type=housenumber`);
+                const dataAPI = await repAPI.json();
                 
-                // Adresses mail réalistes pour les particuliers
-                const domainesPart = ['gmail.com', 'yahoo.fr', 'outlook.fr', 'orange.fr', 'free.fr', 'sfr.fr', 'laposte.net'];
-                const domaine = domainesPart[Math.floor(Math.random() * domainesPart.length)];
-                const email = faker.internet.email({ firstName: prenom, lastName: nom, provider: domaine }).toLowerCase();
+                // Sélection aléatoire parmi les résultats réels
+                const adresseAleatoire = dataAPI.features[Math.floor(Math.random() * dataAPI.features.length)].properties;
+                const adresseComplete = `${adresseAleatoire.name}, ${adresseAleatoire.postcode} ${adresseAleatoire.city}`;
+                // -----------------------------------------------------------------------
 
-                texte = `Type : Particulier\n\nPrénom : ${prenom}\nNom : ${nom}\nDate de naissance : ${dateNaissance}\nVille de naissance : ${villeNaissance}\n\nCoordonnées :\n- Adresse : ${adresse}\n- Téléphone : ${telephone}\n- Email : ${email}\n\nCarte Bleue : ${infosCB}\nProfession : ${profession}`;
-            } else {
-                const raisonSociale = faker.company.name();
-                const siret = faker.string.numeric(9) + "0001" + faker.string.numeric(1);
-                const adresse = `${faker.location.buildingNumber()} ${faker.location.street()}, ${faker.location.zipCode()} ${faker.location.city()}`;
+                // --- Génération de la Carte Bleue (16 chiffres, 4x4) ---
+                let cbBrut = "";
+                while (cbBrut.length !== 16) {
+                    cbBrut = faker.finance.creditCardNumber().replace(/\D/g, ''); 
+                }
+                const cbFormattee = cbBrut.match(/.{1,4}/g).join(' ');
+                const cvv = faker.finance.creditCardCVV();
+                const expDate = faker.date.future({ years: 4 });
+                const mois = String(expDate.getMonth() + 1).padStart(2, '0');
+                const annee = String(expDate.getFullYear()).slice(-2);
+                const infosCB = `${cbFormattee} (Exp: ${mois}/${annee} - CVV: ${cvv})`;
+
+                // --- Génération du Téléphone FR (10 chiffres, prefix valide) ---
+                const prefixes = ['01', '02', '03', '04', '05', '06', '07', '09'];
+                const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+                const telephone = prefix + faker.string.numeric(8);
+
+                if (type === 'particulier') {
+                    const prenom = faker.person.firstName();
+                    const nom = faker.person.lastName();
+                    const dateNaissance = faker.date.birthdate({ min: 18, max: 70, mode: 'age' }).toLocaleDateString('fr-FR');
+                    const villeNaissance = faker.location.city();
+                    const profession = faker.person.jobTitle();
+                    
+                    const domainesPart = ['gmail.com', 'yahoo.fr', 'outlook.fr', 'orange.fr', 'free.fr', 'sfr.fr', 'laposte.net'];
+                    const domaine = domainesPart[Math.floor(Math.random() * domainesPart.length)];
+                    const email = faker.internet.email({ firstName: prenom, lastName: nom, provider: domaine }).toLowerCase();
+
+                    texte = `Type : Particulier\n\nPrénom : ${prenom}\nNom : ${nom}\nDate de naissance : ${dateNaissance}\nVille de naissance : ${villeNaissance}\n\nCoordonnées :\n- Adresse : ${adresseComplete}\n- Téléphone : ${telephone}\n- Email : ${email}\n\nCarte Bleue : ${infosCB}\nProfession : ${profession}`;
+                } else {
+                    const raisonSociale = faker.company.name();
+                    const siret = faker.string.numeric(9) + "0001" + faker.string.numeric(1);
+                    
+                    const nomDomaineNettoye = raisonSociale.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                    const extensions = ['.fr', '.com', '.eu'];
+                    const ext = extensions[Math.floor(Math.random() * extensions.length)];
+                    const prefixesPro = ['contact', 'info', 'direction', 'hello', 'commercial'];
+                    const prefixPro = prefixesPro[Math.floor(Math.random() * prefixesPro.length)];
+                    const email = `${prefixPro}@${nomDomaineNettoye}${ext}`;
+
+                    texte = `Type : Professionnel\n\nRaison sociale : ${raisonSociale}\nSIRET : ${siret}\n\nCoordonnées :\n- Adresse : ${adresseComplete}\n- Téléphone : ${telephone}\n- Email : ${email}\n\nCarte Bleue : ${infosCB}`;
+                }
+
+                resArea.value = texte;
+                document.getElementById('resultat').style.display = "block";
                 
-                // Fabrication d'un email pro basé sur le nom de l'entreprise
-                // Enlève les accents, espaces et caractères spéciaux du nom de l'entreprise
-                const nomDomaineNettoye = raisonSociale.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-                const extensions = ['.fr', '.com', '.eu'];
-                const ext = extensions[Math.floor(Math.random() * extensions.length)];
-                const prefixesPro = ['contact', 'info', 'direction', 'hello', 'commercial'];
-                const prefixPro = prefixesPro[Math.floor(Math.random() * prefixesPro.length)];
-                const email = `${prefixPro}@${nomDomaineNettoye}${ext}`;
-
-                texte = `Type : Professionnel\n\nRaison sociale : ${raisonSociale}\nSIRET : ${siret}\n\nCoordonnées :\n- Adresse : ${adresse}\n- Téléphone : ${telephone}\n- Email : ${email}\n\nCarte Bleue : ${infosCB}`;
+            } catch (error) {
+                alert("Erreur réseau : Impossible de contacter la Base Adresse Nationale pour le moment.");
+            } finally {
+                // Rétablir le bouton
+                btnGen.innerText = "Générer les données";
+                btnGen.disabled = false;
             }
-
-            resArea.value = texte;
-            document.getElementById('resultat').style.display = "block";
         }
 
         window.copierPressePapier = function() {
@@ -100,7 +119,7 @@
             <option value="professionnel">🏢 Professionnel</option>
         </select>
         
-        <button onclick="genererDonnees()">Générer les données</button>
+        <button id="btnGen" onclick="genererDonnees()">Générer les données</button>
         
         <div id="resultat" class="result-box">
             <label for="resultText">Résultat :</label>
