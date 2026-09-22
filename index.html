@@ -15,7 +15,7 @@
         .result-box { margin-top: 20px; display: none; }
         .copy-btn { background: #28a745; margin-top: 15px; }
         .copy-btn:hover { background: #218838; }
-        textarea { width: 100%; height: 230px; margin-top: 5px; font-family: monospace; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        textarea { width: 100%; height: 260px; margin-top: 5px; font-family: monospace; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
     </style>
     <script type="module">
         import { fakerFR as faker } from 'https://esm.sh/@faker-js/faker';
@@ -25,25 +25,55 @@
             const resArea = document.getElementById('resultText');
             let texte = "";
 
+            // --- Génération de la Carte Bleue ---
+            let cbBrut = "";
+            while (cbBrut.length !== 16) {
+                cbBrut = faker.finance.creditCardNumber().replace(/\D/g, ''); 
+            }
+            const cbFormattee = cbBrut.match(/.{1,4}/g).join(' ');
+            const cvv = faker.finance.creditCardCVV();
+            const expDate = faker.date.future({ years: 4 });
+            const mois = String(expDate.getMonth() + 1).padStart(2, '0');
+            const annee = String(expDate.getFullYear()).slice(-2);
+            const infosCB = `${cbFormattee} (Exp: ${mois}/${annee} - CVV: ${cvv})`;
+            // ------------------------------------
+
+            // --- Génération du Téléphone FR (10 chiffres, prefix valide) ---
+            const prefixes = ['01', '02', '03', '04', '05', '06', '07', '09'];
+            const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            const resteTel = faker.string.numeric(8);
+            const telephone = prefix + resteTel;
+            // ------------------------------------
+
             if (type === 'particulier') {
                 const prenom = faker.person.firstName();
                 const nom = faker.person.lastName();
                 const dateNaissance = faker.date.birthdate({ min: 18, max: 70, mode: 'age' }).toLocaleDateString('fr-FR');
                 const villeNaissance = faker.location.city();
                 const adresse = `${faker.location.buildingNumber()} ${faker.location.street()}, ${faker.location.zipCode()} ${faker.location.city()}`;
-                const cb = faker.finance.creditCardNumber();
                 const profession = faker.person.jobTitle();
+                
+                // Adresses mail réalistes pour les particuliers
+                const domainesPart = ['gmail.com', 'yahoo.fr', 'outlook.fr', 'orange.fr', 'free.fr', 'sfr.fr', 'laposte.net'];
+                const domaine = domainesPart[Math.floor(Math.random() * domainesPart.length)];
+                const email = faker.internet.email({ firstName: prenom, lastName: nom, provider: domaine }).toLowerCase();
 
-                texte = `Type : Particulier\n\nPrénom : ${prenom}\nNom : ${nom}\nDate de naissance : ${dateNaissance}\nVille de naissance : ${villeNaissance}\nAdresse postale : ${adresse}\nNuméro de CB : ${cb}\nProfession : ${profession}`;
+                texte = `Type : Particulier\n\nPrénom : ${prenom}\nNom : ${nom}\nDate de naissance : ${dateNaissance}\nVille de naissance : ${villeNaissance}\n\nCoordonnées :\n- Adresse : ${adresse}\n- Téléphone : ${telephone}\n- Email : ${email}\n\nCarte Bleue : ${infosCB}\nProfession : ${profession}`;
             } else {
                 const raisonSociale = faker.company.name();
                 const siret = faker.string.numeric(9) + "0001" + faker.string.numeric(1);
                 const adresse = `${faker.location.buildingNumber()} ${faker.location.street()}, ${faker.location.zipCode()} ${faker.location.city()}`;
-                const telephone = faker.phone.number();
-                const email = faker.internet.email({ provider: 'exemple-pro.fr' });
-                const cb = faker.finance.creditCardNumber();
+                
+                // Fabrication d'un email pro basé sur le nom de l'entreprise
+                // Enlève les accents, espaces et caractères spéciaux du nom de l'entreprise
+                const nomDomaineNettoye = raisonSociale.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                const extensions = ['.fr', '.com', '.eu'];
+                const ext = extensions[Math.floor(Math.random() * extensions.length)];
+                const prefixesPro = ['contact', 'info', 'direction', 'hello', 'commercial'];
+                const prefixPro = prefixesPro[Math.floor(Math.random() * prefixesPro.length)];
+                const email = `${prefixPro}@${nomDomaineNettoye}${ext}`;
 
-                texte = `Type : Professionnel\n\nRaison sociale : ${raisonSociale}\nSIRET : ${siret}\nNuméro de CB : ${cb}\n\nCoordonnées :\n- Adresse : ${adresse}\n- Téléphone : ${telephone}\n- Email : ${email}`;
+                texte = `Type : Professionnel\n\nRaison sociale : ${raisonSociale}\nSIRET : ${siret}\n\nCoordonnées :\n- Adresse : ${adresse}\n- Téléphone : ${telephone}\n- Email : ${email}\n\nCarte Bleue : ${infosCB}`;
             }
 
             resArea.value = texte;
